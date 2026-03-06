@@ -1,0 +1,1044 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Opedd API",
+    "version": "1.0.0",
+    "description": "The Opedd API lets publishers license their content programmatically, and lets AI companies, researchers, and platforms purchase and verify licenses. Every license is registered on-chain on Base for immutable proof.",
+    "contact": {
+      "name": "Opedd",
+      "url": "https://opedd.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://djdzcciayennqchjgybx.supabase.co/functions/v1",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    { "name": "Content", "description": "Discover and browse licensable articles" },
+    { "name": "Licenses", "description": "Purchase and verify content licenses" },
+    { "name": "Registry", "description": "Public Registry of Proof — on-chain verified records" },
+    { "name": "Agent", "description": "Agentic purchase flow for AI systems — no pre-authorization required" },
+    { "name": "Publisher", "description": "Publisher tools — usage stats, AI defense policy, embeddable widget" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Your publisher API key. Generate one in your Opedd dashboard under Settings → API. Keys are prefixed with `op_`."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string", "example": "Invalid API key" }
+        }
+      },
+      "ArticleSummary": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string", "example": "The Future of AI in Newsrooms" },
+          "description": { "type": "string" },
+          "source_url": { "type": "string", "format": "uri", "example": "https://publisher.com/articles/ai-newsrooms" },
+          "pricing": {
+            "type": "object",
+            "properties": {
+              "human": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "price": { "type": "number", "example": 10.00 },
+                  "currency": { "type": "string", "example": "usd" }
+                }
+              },
+              "ai": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "price": { "type": "number", "example": 50.00 },
+                  "currency": { "type": "string", "example": "usd" }
+                }
+              }
+            }
+          },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "human_licenses_sold": { "type": "integer", "example": 3 },
+              "ai_licenses_sold": { "type": "integer", "example": 12 }
+            }
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LicenseKey": {
+        "type": "string",
+        "pattern": "^OP-[A-Z0-9]{4}-[A-Z0-9]{4}$",
+        "example": "OP-A1B2-C3D4"
+      },
+      "LicenseType": {
+        "type": "string",
+        "enum": ["human", "ai", "ai_inference"],
+        "description": "`human` — republication rights. `ai` — training dataset use. `ai_inference` — RAG / retrieval augmented generation."
+      },
+      "IntendedUse": {
+        "type": "string",
+        "enum": ["personal", "editorial", "commercial", "ai_training", "corporate"]
+      },
+      "IssuedLicense": {
+        "type": "object",
+        "properties": {
+          "key": { "$ref": "#/components/schemas/LicenseKey" },
+          "type": { "$ref": "#/components/schemas/LicenseType" },
+          "type_label": { "type": "string", "example": "AI Training" },
+          "status": { "type": "string", "example": "completed" },
+          "amount": { "type": "number", "example": 50.00 },
+          "currency": { "type": "string", "example": "usd" },
+          "issued_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Missing or invalid API key",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "error": "Missing or invalid API key. Use X-API-Key header with your op_ key." }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "error": "Article not found" }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Rate limit exceeded",
+        "headers": {
+          "X-RateLimit-Limit": { "schema": { "type": "integer" } },
+          "X-RateLimit-Remaining": { "schema": { "type": "integer" } },
+          "X-RateLimit-Reset": { "schema": { "type": "integer" } },
+          "Retry-After": { "schema": { "type": "integer" } }
+        },
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "error": "Rate limit exceeded. Max 30 purchases per hour." }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "listArticles",
+        "tags": ["Content"],
+        "summary": "List articles",
+        "description": "Returns all licensable articles for your publisher account, with pricing and sales stats. Results are paginated (max 100 per page).",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["articles"] },
+            "description": "Must be `articles`"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 50, "maximum": 100 },
+            "description": "Number of results per page"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 },
+            "description": "Pagination offset"
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["human", "ai"] },
+            "description": "Filter to only articles that have a price set for this license type"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of articles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "articles": { "type": "array", "items": { "$ref": "#/components/schemas/ArticleSummary" } },
+                        "total": { "type": "integer", "example": 142 },
+                        "limit": { "type": "integer", "example": 50 },
+                        "offset": { "type": "integer", "example": 0 }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "data": {
+                    "articles": [
+                      {
+                        "id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                        "title": "The Future of AI in Newsrooms",
+                        "description": "How AI is transforming modern journalism",
+                        "source_url": "https://publisher.com/articles/ai-newsrooms",
+                        "pricing": {
+                          "human": { "price": 10.00, "currency": "usd" },
+                          "ai": { "price": 50.00, "currency": "usd" }
+                        },
+                        "stats": { "human_licenses_sold": 3, "ai_licenses_sold": 12 },
+                        "created_at": "2026-01-15T10:30:00Z"
+                      }
+                    ],
+                    "total": 142,
+                    "limit": 50,
+                    "offset": 0
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/api#article": {
+      "get": {
+        "operationId": "getArticle",
+        "tags": ["Content"],
+        "summary": "Get article",
+        "description": "Returns full details for a single article, including pricing, lifetime stats, and the 10 most recent licenses issued.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["article"] }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Article UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article detail",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "article": {
+                      "id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                      "title": "The Future of AI in Newsrooms",
+                      "description": "How AI is transforming modern journalism",
+                      "source_url": "https://publisher.com/articles/ai-newsrooms",
+                      "licensing_enabled": true,
+                      "pricing": {
+                        "human": { "price": 10.00, "currency": "usd" },
+                        "ai": { "price": 50.00, "currency": "usd" }
+                      },
+                      "stats": {
+                        "human_licenses_sold": 3,
+                        "ai_licenses_sold": 12,
+                        "total_revenue": 630.00
+                      },
+                      "created_at": "2026-01-15T10:30:00Z"
+                    },
+                    "recent_licenses": [
+                      {
+                        "key": "OP-A1B2-C3D4",
+                        "type": "ai",
+                        "amount": 50.00,
+                        "licensee": "Acme AI Corp",
+                        "issued_at": "2026-03-01T14:22:00Z"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api#purchase": {
+      "post": {
+        "operationId": "purchaseLicense",
+        "tags": ["Licenses"],
+        "summary": "Purchase a license",
+        "description": "Issues a single license for one article. Returns a unique license key immediately. Sends a Handshake Email to the buyer and registers the license on Base (non-blocking).\n\n**Rate limit:** 30 purchases per API key per hour.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["purchase"] }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["article_id", "license_type", "buyer_email"],
+                "properties": {
+                  "article_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the article to license"
+                  },
+                  "license_type": {
+                    "$ref": "#/components/schemas/LicenseType"
+                  },
+                  "buyer_email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email address to receive the license certificate"
+                  },
+                  "buyer_name": {
+                    "type": "string",
+                    "description": "Full name of the licensee"
+                  },
+                  "buyer_organization": {
+                    "type": "string",
+                    "description": "Organization the license is issued to"
+                  },
+                  "intended_use": {
+                    "$ref": "#/components/schemas/IntendedUse"
+                  }
+                }
+              },
+              "example": {
+                "article_id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                "license_type": "ai",
+                "buyer_email": "licensing@acmecorp.com",
+                "buyer_name": "Jane Smith",
+                "buyer_organization": "Acme AI Corp",
+                "intended_use": "ai_training"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "License issued",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "license": {
+                      "key": "OP-A1B2-C3D4",
+                      "type": "ai",
+                      "type_label": "AI Training",
+                      "status": "completed",
+                      "amount": 50.00,
+                      "currency": "usd",
+                      "issued_at": "2026-03-06T12:00:00Z"
+                    },
+                    "content": {
+                      "id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                      "title": "The Future of AI in Newsrooms",
+                      "source_url": "https://publisher.com/articles/ai-newsrooms"
+                    },
+                    "licensee": {
+                      "email": "licensing@acmecorp.com",
+                      "name": "Jane Smith",
+                      "organization": "Acme AI Corp",
+                      "intended_use": "ai_training"
+                    },
+                    "verify_url": "https://opedd.com/verify/OP-A1B2-C3D4",
+                    "email_sent": true
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api#batch_purchase": {
+      "post": {
+        "operationId": "batchPurchase",
+        "tags": ["Licenses"],
+        "summary": "Batch purchase licenses",
+        "description": "Purchase licenses for up to 50 articles in a single request. All licenses share the same buyer details. Returns a summary and individual license keys.\n\nA consolidated email with all keys is sent to `buyer_email`. Each license is registered on-chain.\n\n**Rate limit:** 10 batch requests per API key per hour.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["batch_purchase"] }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["items", "buyer_email"],
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "description": "Array of articles to license",
+                    "items": {
+                      "type": "object",
+                      "required": ["article_id", "license_type"],
+                      "properties": {
+                        "article_id": { "type": "string", "format": "uuid" },
+                        "license_type": { "$ref": "#/components/schemas/LicenseType" }
+                      }
+                    }
+                  },
+                  "buyer_email": { "type": "string", "format": "email" },
+                  "buyer_name": { "type": "string" },
+                  "buyer_organization": { "type": "string" },
+                  "intended_use": { "$ref": "#/components/schemas/IntendedUse" }
+                }
+              },
+              "example": {
+                "items": [
+                  { "article_id": "c41371c2-842d-4bc1-acd0-40466ad34e99", "license_type": "ai" },
+                  { "article_id": "d52482d3-953e-5cd2-bde1-51577be45f00", "license_type": "ai" }
+                ],
+                "buyer_email": "licensing@acmecorp.com",
+                "buyer_organization": "Acme AI Corp",
+                "intended_use": "ai_training"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Batch licenses issued",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "summary": {
+                      "total_requested": 2,
+                      "issued": 2,
+                      "failed": 0,
+                      "total_amount": 100.00,
+                      "currency": "usd"
+                    },
+                    "licenses": [
+                      {
+                        "article_id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                        "title": "The Future of AI in Newsrooms",
+                        "license_key": "OP-A1B2-C3D4",
+                        "license_type": "ai",
+                        "amount": 50.00
+                      },
+                      {
+                        "article_id": "d52482d3-953e-5cd2-bde1-51577be45f00",
+                        "title": "Generative Models Explained",
+                        "license_key": "OP-E5F6-G7H8",
+                        "license_type": "ai",
+                        "amount": 50.00
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/api#verify": {
+      "get": {
+        "operationId": "verifyLicense",
+        "tags": ["Licenses"],
+        "summary": "Verify a license",
+        "description": "Verify a license key and retrieve its full details. **Public — no API key required.**\n\nReturns blockchain proof for all licenses. For `ai` and `ai_inference` licenses, also returns a machine-readable JSON-LD object for automated compliance checks.",
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["verify"] }
+          },
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/LicenseKey" },
+            "description": "License key in `OP-XXXX-XXXX` format"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "License details",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "valid": true,
+                    "license": {
+                      "key": "OP-A1B2-C3D4",
+                      "type": "ai",
+                      "type_label": "AI Training",
+                      "status": "completed",
+                      "intended_use": "ai_training",
+                      "amount": 50.00,
+                      "currency": "usd",
+                      "issued_at": "2026-03-06T12:00:00Z"
+                    },
+                    "content": {
+                      "title": "The Future of AI in Newsrooms",
+                      "source_url": "https://publisher.com/articles/ai-newsrooms",
+                      "publisher": "The Daily Record"
+                    },
+                    "licensee": {
+                      "name": "Jane Smith",
+                      "organization": "Acme AI Corp"
+                    },
+                    "blockchain_proof": {
+                      "registered": true,
+                      "valid": true,
+                      "chain": "base-sepolia",
+                      "contract": "0xf2cb1347de16c362eb67549dc1521fc8ab2f8d6d",
+                      "explorer_url": "https://sepolia.basescan.org/tx/0xabc123..."
+                    },
+                    "machine_readable": {
+                      "@context": "https://opedd.com/schema/v1",
+                      "protocol": "opedd",
+                      "version": "1.0",
+                      "license_id": "OP-A1B2-C3D4",
+                      "license_type": "ai_training",
+                      "content_title": "The Future of AI in Newsrooms",
+                      "content_url": "https://publisher.com/articles/ai-newsrooms",
+                      "publisher": "The Daily Record",
+                      "licensee_organization": "Acme AI Corp",
+                      "issued_at": "2026-03-06T12:00:00Z",
+                      "status": "completed"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/api#usage": {
+      "get": {
+        "operationId": "getUsage",
+        "tags": ["Publisher"],
+        "summary": "Usage stats",
+        "description": "Returns API usage statistics for your publisher account — content counts, transaction totals, revenue, and current rate limits.",
+        "security": [{ "ApiKeyAuth": [] }],
+        "parameters": [
+          {
+            "name": "action",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "enum": ["usage"] }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Usage statistics",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "publisher": { "name": "The Daily Record" },
+                    "content": {
+                      "total_articles": 816,
+                      "licensed_articles": 802
+                    },
+                    "transactions": {
+                      "total": 247,
+                      "completed": 241,
+                      "via_api": 58,
+                      "total_revenue": 12050.00,
+                      "currency": "usd"
+                    },
+                    "activity": {
+                      "events_last_24h": 14
+                    },
+                    "rate_limits": {
+                      "purchases_per_hour": 30
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/lookup-article": {
+      "get": {
+        "operationId": "lookupArticle",
+        "tags": ["Content"],
+        "summary": "Lookup article by URL",
+        "description": "Discover whether a specific article URL has a license available. Returns pricing, license type, and a direct purchase URL.\n\nAlso sets HTTP headers for programmatic discovery:\n- `X-License-Available: true`\n- `X-License-Human-Price: 10`\n- `X-License-AI-Price: 50`\n- `X-License-Purchase-URL: https://opedd.com/buy/...`",
+        "parameters": [
+          {
+            "name": "source_url",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uri" },
+            "description": "The canonical URL of the article",
+            "example": "https://publisher.com/articles/ai-newsrooms"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Article found with license available",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                    "title": "The Future of AI in Newsrooms",
+                    "source_url": "https://publisher.com/articles/ai-newsrooms",
+                    "licensing_enabled": true,
+                    "human_price": 10.00,
+                    "ai_price": 50.00,
+                    "publisher_id": "6973a2e9-dee6-4797-a6cb-c927952374e6",
+                    "purchase_url": "https://opedd.com/buy/c41371c2-842d-4bc1-acd0-40466ad34e99"
+                  }
+                }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/agent-purchase": {
+      "post": {
+        "operationId": "agentPurchase",
+        "tags": ["Agent"],
+        "summary": "Agentic license purchase",
+        "description": "Purchase a license directly from an AI agent — no pre-authorization, no redirect. Accepts a Stripe payment method ID or a USDC on-chain transaction hash. Returns a license key immediately.\n\nDesigned for AI agents and automated pipelines. Supports:\n- **Stripe** — provide a `pm_...` payment method ID from your Stripe integration\n- **USDC** — provide a transaction hash of a completed USDC transfer on Base\n\n**Rate limit:** 10 purchases per buyer email per hour.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["license_type", "buyer_email", "payment"],
+                "properties": {
+                  "article_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "UUID of the article. Either `article_id` or `article_url` is required."
+                  },
+                  "article_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Canonical URL of the article. Either `article_id` or `article_url` is required."
+                  },
+                  "license_type": { "$ref": "#/components/schemas/LicenseType" },
+                  "buyer_email": { "type": "string", "format": "email" },
+                  "buyer_name": { "type": "string" },
+                  "buyer_organization": { "type": "string" },
+                  "intended_use": { "$ref": "#/components/schemas/IntendedUse" },
+                  "payment": {
+                    "type": "object",
+                    "required": ["method"],
+                    "description": "Payment details",
+                    "oneOf": [
+                      {
+                        "title": "Stripe payment method",
+                        "properties": {
+                          "method": { "type": "string", "enum": ["stripe_pm"] },
+                          "payment_method_id": {
+                            "type": "string",
+                            "description": "Stripe payment method ID (`pm_...`)",
+                            "example": "pm_1ABC..."
+                          }
+                        },
+                        "required": ["method", "payment_method_id"]
+                      },
+                      {
+                        "title": "USDC on-chain",
+                        "properties": {
+                          "method": { "type": "string", "enum": ["usdc"] },
+                          "tx_hash": {
+                            "type": "string",
+                            "description": "Transaction hash of the completed USDC transfer on Base",
+                            "example": "0xabc123..."
+                          },
+                          "chain": {
+                            "type": "string",
+                            "enum": ["base", "base_sepolia"],
+                            "default": "base"
+                          }
+                        },
+                        "required": ["method", "tx_hash"]
+                      }
+                    ]
+                  }
+                }
+              },
+              "examples": {
+                "stripe": {
+                  "summary": "Pay with Stripe",
+                  "value": {
+                    "article_url": "https://publisher.com/articles/ai-newsrooms",
+                    "license_type": "ai",
+                    "buyer_email": "agent@acmecorp.com",
+                    "buyer_organization": "Acme AI Corp",
+                    "intended_use": "ai_training",
+                    "payment": {
+                      "method": "stripe_pm",
+                      "payment_method_id": "pm_1ABC..."
+                    }
+                  }
+                },
+                "usdc": {
+                  "summary": "Pay with USDC",
+                  "value": {
+                    "article_id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                    "license_type": "ai_inference",
+                    "buyer_email": "agent@acmecorp.com",
+                    "intended_use": "ai_training",
+                    "payment": {
+                      "method": "usdc",
+                      "tx_hash": "0xabc123...",
+                      "chain": "base"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "License issued",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "license_key": "OP-A1B2-C3D4",
+                    "license_type": "ai",
+                    "license_type_label": "AI Training",
+                    "article": {
+                      "id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
+                      "title": "The Future of AI in Newsrooms",
+                      "source_url": "https://publisher.com/articles/ai-newsrooms"
+                    },
+                    "amount": 50.00,
+                    "currency": "usd",
+                    "payment_method": "stripe_pm",
+                    "status": "completed",
+                    "issued_at": "2026-03-06T12:00:00Z",
+                    "verify_url": "https://opedd.com/verify/OP-A1B2-C3D4",
+                    "certificate_url": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/certificate?key=OP-A1B2-C3D4"
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment failed",
+            "content": {
+              "application/json": {
+                "example": { "success": false, "error": "Payment not completed: Stripe status=requires_payment_method" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    },
+    "/registry": {
+      "get": {
+        "operationId": "browseRegistry",
+        "tags": ["Registry"],
+        "summary": "Registry of Proof",
+        "description": "Browse the public Registry of Proof — the immutable, on-chain verified record of all licenses issued through Opedd. **Public — no API key required.**\n\nFilter by license key, article, or publisher. Without filters, returns a global feed of recent licenses.",
+        "parameters": [
+          {
+            "name": "license_key",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/LicenseKey" },
+            "description": "Filter to a specific license key"
+          },
+          {
+            "name": "article_id",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Filter by article"
+          },
+          {
+            "name": "publisher_id",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Filter by publisher"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 100 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Registry entries",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "records": [
+                      {
+                        "license_key": "OP-A1B2-C3D4",
+                        "license_type": "ai",
+                        "article_title": "The Future of AI in Newsrooms",
+                        "publisher_name": "The Daily Record",
+                        "licensee_organization": "Acme AI Corp",
+                        "amount": 50.00,
+                        "issued_at": "2026-03-06T12:00:00Z",
+                        "blockchain_status": "confirmed",
+                        "blockchain_tx_hash": "0xabc123..."
+                      }
+                    ],
+                    "total": 1,
+                    "limit": 20,
+                    "offset": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/license-discovery": {
+      "get": {
+        "operationId": "licenseDiscovery",
+        "tags": ["Agent"],
+        "summary": "License discovery",
+        "description": "Returns a machine-readable `opedd.json` discovery file for a publisher. AI agents and crawlers use this to discover what content is available for licensing, current pricing, and how to purchase programmatically.\n\nEquivalent to a `robots.txt` for AI licensing.",
+        "parameters": [
+          {
+            "name": "publisher_id",
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Publisher UUID"
+          },
+          {
+            "name": "domain",
+            "in": "query",
+            "schema": { "type": "string" },
+            "description": "Publisher domain (alternative to publisher_id)",
+            "example": "publisher.com"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Publisher discovery file",
+            "content": {
+              "application/json": {
+                "example": {
+                  "protocol": "opedd",
+                  "version": "1.0",
+                  "publisher": {
+                    "id": "6973a2e9-dee6-4797-a6cb-c927952374e6",
+                    "name": "The Daily Record",
+                    "website": "https://publisher.com"
+                  },
+                  "catalog": {
+                    "total_articles": 816,
+                    "licensed_articles": 802
+                  },
+                  "pricing": {
+                    "default_human": 10.00,
+                    "default_ai": 50.00,
+                    "currency": "usd"
+                  },
+                  "endpoints": {
+                    "lookup": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/lookup-article",
+                    "purchase": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/agent-purchase",
+                    "verify": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/api?action=verify",
+                    "registry": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/registry"
+                  },
+                  "agent_instructions": "Use the lookup endpoint to check if an article is licensable. Then use agent-purchase with a Stripe payment method or USDC transaction to obtain a license key."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/certificate": {
+      "get": {
+        "operationId": "getCertificate",
+        "tags": ["Licenses"],
+        "summary": "Download certificate (PDF)",
+        "description": "Download a PDF license certificate for a given license key. **Public — no API key required.**",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/LicenseKey" },
+            "description": "License key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF certificate",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/invoice": {
+      "get": {
+        "operationId": "getInvoice",
+        "tags": ["Licenses"],
+        "summary": "Download invoice (PDF)",
+        "description": "Download a PDF invoice for a completed license purchase. Includes Bill From/To, issue date, Net-30 due date, archive coverage period, and PAID/PENDING status. **Public — no API key required.**",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "query",
+            "required": true,
+            "schema": { "$ref": "#/components/schemas/LicenseKey" },
+            "description": "License key"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF invoice",
+            "content": {
+              "application/pdf": {}
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/ai-defense-policy": {
+      "get": {
+        "operationId": "aiDefensePolicy",
+        "tags": ["Publisher"],
+        "summary": "AI crawler policy",
+        "description": "Generate a `robots.txt` or `ai.txt` blocking file for a publisher. Blocks 16 known AI crawlers including GPTBot, ClaudeBot, Googlebot-Extended, and more.\n\nServe this from your site at `/robots.txt` or `/ai.txt` to enforce your licensing policy against AI scrapers.",
+        "parameters": [
+          {
+            "name": "publisher_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["robots", "ai"], "default": "robots" },
+            "description": "`robots` returns robots.txt format. `ai` returns ai.txt format."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crawler policy file",
+            "content": {
+              "text/plain": {
+                "example": "User-agent: GPTBot\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n\n# Licensed via Opedd — opedd.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resend-licenses": {
+      "post": {
+        "operationId": "resendLicenses",
+        "tags": ["Licenses"],
+        "summary": "Resend license keys",
+        "description": "Re-send all license keys associated with an email address in a single consolidated email. Useful if a buyer lost their keys.\n\n**Rate limit:** 3 requests per email per hour.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email"],
+                "properties": {
+                  "email": { "type": "string", "format": "email" }
+                }
+              },
+              "example": { "email": "buyer@example.com" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email sent",
+            "content": {
+              "application/json": {
+                "example": { "success": true, "data": { "sent": true, "count": 3 } }
+              }
+            }
+          },
+          "429": { "$ref": "#/components/responses/RateLimited" }
+        }
+      }
+    }
+  },
+  "x-scalar-theme": "default"
+}
