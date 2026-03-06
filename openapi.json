@@ -3,9 +3,9 @@
   "info": {
     "title": "Opedd API",
     "version": "1.0.0",
-    "description": "The Opedd API lets publishers license their content programmatically, and lets AI companies, researchers, and platforms purchase and verify licenses. Every license is registered on-chain on Base for immutable proof.",
+    "description": "# Welcome to the Opedd API 👋\n\nOpedd is the licensing infrastructure for the open web — think of it as the **Stripe of content licensing**. Publishers register their content, set prices, and get paid. AI companies, researchers, and platforms purchase rights programmatically, get a license key, and can prove compliance on-chain.\n\nEvery license issued through Opedd is:\n- ✅ Recorded in our immutable ledger\n- ⛓️ Registered on Base (Coinbase's L2) for on-chain proof\n- 📧 Confirmed via a Handshake Email to the buyer\n\n---\n\n## Quick start — 3 steps\n\n**Step 1 — Get your API key**\n\nLog in to your Opedd dashboard → Settings → API. Your key looks like `op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`. Keep it secret — it has full access to your publisher account.\n\n**Step 2 — Make your first request**\n\n```bash\ncurl https://djdzcciayennqchjgybx.supabase.co/functions/v1/api?action=articles \\\n  -H \"X-API-Key: op_your_key_here\"\n```\n\nYou'll get back a paginated list of your licensable articles with pricing.\n\n**Step 3 — Issue your first license**\n\n```bash\ncurl -X POST \\\n  \"https://djdzcciayennqchjgybx.supabase.co/functions/v1/api?action=purchase\" \\\n  -H \"X-API-Key: op_your_key_here\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"article_id\": \"<your-article-uuid>\",\n    \"license_type\": \"ai\",\n    \"buyer_email\": \"buyer@example.com\"\n  }'\n```\n\nThat's it. You'll get back an `OP-XXXX-XXXX` license key, the buyer gets an email, and the license is registered on-chain.\n\n---\n\n## Authentication\n\nAll publisher endpoints require your API key in the `X-API-Key` header.\n\n```\nX-API-Key: op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n```\n\nA few endpoints are **public** — no key needed: `verify`, `registry`, `lookup-article`, `certificate`, `invoice`, `license-discovery`. These are safe to call from the browser or an AI agent.\n\n---\n\n## Base URL\n\n```\nhttps://djdzcciayennqchjgybx.supabase.co/functions/v1\n```\n\n---\n\n## Rate limits\n\nAll rate-limited endpoints return these headers so you can handle limits gracefully:\n\n| Header | Description |\n|---|---|\n| `X-RateLimit-Limit` | Max requests allowed in the window |\n| `X-RateLimit-Remaining` | Requests left in the current window |\n| `X-RateLimit-Reset` | Unix timestamp when the window resets |\n| `Retry-After` | Seconds to wait before retrying |\n\n---\n\n## Error format\n\nAll errors follow the same shape:\n\n```json\n{\n  \"success\": false,\n  \"error\": \"A human-readable description of what went wrong\"\n}\n```\n\n| Status | Meaning |\n|---|---|\n| `400` | Bad request — missing or invalid parameter |\n| `401` | Unauthorized — invalid or missing API key |\n| `402` | Payment failed |\n| `403` | Forbidden — licensing not enabled for this article |\n| `404` | Not found |\n| `409` | Conflict — e.g. transaction already used |\n| `429` | Rate limit exceeded |\n| `500` | Internal server error |\n\n---\n\n## License types\n\nOpedd supports three license types. Choose the right one for your buyer:\n\n| Type | Label | Use case |\n|---|---|---|\n| `human` | Human Republication | Journalists, researchers, editorial reuse |\n| `ai` | AI Training | Training datasets, fine-tuning, model pretraining |\n| `ai_inference` | AI Inference | RAG pipelines, retrieval-augmented generation, real-time lookups |\n\n---\n\n## On-chain proof\n\nEvery license is registered on the **OpeddRegistry** smart contract deployed on Base Sepolia:\n\n```\n0xf2cb1347de16c362eb67549dc1521fc8ab2f8d6d\n```\n\nRegistration is non-blocking — your API call returns immediately, and the on-chain write happens in the background. You can track `blockchain_status` in the Registry (`pending → submitted → confirmed`).\n\n---\n\nQuestions? Reach us at [opedd.com](https://opedd.com).",
     "contact": {
-      "name": "Opedd",
+      "name": "Opedd Support",
       "url": "https://opedd.com"
     }
   },
@@ -16,11 +16,26 @@
     }
   ],
   "tags": [
-    { "name": "Content", "description": "Discover and browse licensable articles" },
-    { "name": "Licenses", "description": "Purchase and verify content licenses" },
-    { "name": "Registry", "description": "Public Registry of Proof — on-chain verified records" },
-    { "name": "Agent", "description": "Agentic purchase flow for AI systems — no pre-authorization required" },
-    { "name": "Publisher", "description": "Publisher tools — usage stats, AI defense policy, embeddable widget" }
+    {
+      "name": "Content",
+      "description": "## 📄 Content\n\nDiscover and browse the articles registered under your publisher account. These endpoints let you list your catalog, get details on a specific article, or look up any article by its URL — useful for checking whether a piece of content has a license available before attempting a purchase.\n\nArticles are registered automatically when a buyer uses the Opedd widget on your site, or you can import them in bulk from your sitemap via the dashboard."
+    },
+    {
+      "name": "Licenses",
+      "description": "## 🔑 Licenses\n\nThe core of the Opedd API. Use these endpoints to issue licenses programmatically — one at a time or in bulk — and to verify that a license key is valid.\n\nEvery issued license:\n- Gets a unique `OP-XXXX-XXXX` key\n- Triggers a **Handshake Email** to the buyer with the certificate\n- Is registered on-chain on Base (non-blocking)\n- Is logged in the immutable event ledger\n\nVerification is **public** — anyone can verify a license key without an API key."
+    },
+    {
+      "name": "Registry",
+      "description": "## ⛓️ Registry of Proof\n\nThe public Registry of Proof is a tamper-evident, on-chain verified record of every license ever issued through Opedd. It's fully public — no API key needed.\n\nYou can filter by license key, article, or publisher. Think of it as a public ledger — an AI company can point to a Registry entry as proof they have the rights to use a piece of content."
+    },
+    {
+      "name": "Agent",
+      "description": "## 🤖 Agent Endpoints\n\nBuilt specifically for AI agents and automated pipelines. No pre-authorization, no redirects, no browser required.\n\nThe `agent-purchase` endpoint accepts a Stripe payment method ID or a USDC on-chain transaction hash and returns a license key immediately. The `license-discovery` endpoint provides a machine-readable `opedd.json` file that agents can fetch to understand what's available for licensing from any publisher."
+    },
+    {
+      "name": "Publisher",
+      "description": "## ⚙️ Publisher Tools\n\nUtility endpoints for publishers. Check your API usage and revenue stats, generate AI crawler blocking policies, and embed the Opedd widget on your site."
+    }
   ],
   "components": {
     "securitySchemes": {
@@ -28,7 +43,7 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-API-Key",
-        "description": "Your publisher API key. Generate one in your Opedd dashboard under Settings → API. Keys are prefixed with `op_`."
+        "description": "Your publisher API key. Generate one in your Opedd dashboard under **Settings → API**. Keys are prefixed with `op_` and are 35 characters long.\n\n> ⚠️ Keep your API key secret. It has full access to your publisher account. Never expose it in client-side code or public repositories."
       }
     },
     "schemas": {
@@ -85,11 +100,12 @@
       "LicenseType": {
         "type": "string",
         "enum": ["human", "ai", "ai_inference"],
-        "description": "`human` — republication rights. `ai` — training dataset use. `ai_inference` — RAG / retrieval augmented generation."
+        "description": "`human` — republication rights for journalists and researchers. `ai` — training dataset use for model pretraining or fine-tuning. `ai_inference` — RAG and retrieval-augmented generation, where content is retrieved at inference time."
       },
       "IntendedUse": {
         "type": "string",
-        "enum": ["personal", "editorial", "commercial", "ai_training", "corporate"]
+        "enum": ["personal", "editorial", "commercial", "ai_training", "corporate"],
+        "description": "How the licensee intends to use the content. Optional but recommended — it's recorded in the license and shown in the Handshake Email to the buyer."
       },
       "IssuedLicense": {
         "type": "object",
@@ -124,12 +140,12 @@
         }
       },
       "RateLimited": {
-        "description": "Rate limit exceeded",
+        "description": "Rate limit exceeded — check `Retry-After` header for when to retry",
         "headers": {
-          "X-RateLimit-Limit": { "schema": { "type": "integer" } },
-          "X-RateLimit-Remaining": { "schema": { "type": "integer" } },
-          "X-RateLimit-Reset": { "schema": { "type": "integer" } },
-          "Retry-After": { "schema": { "type": "integer" } }
+          "X-RateLimit-Limit": { "schema": { "type": "integer" }, "description": "Max requests in window" },
+          "X-RateLimit-Remaining": { "schema": { "type": "integer" }, "description": "Requests remaining" },
+          "X-RateLimit-Reset": { "schema": { "type": "integer" }, "description": "Unix timestamp of window reset" },
+          "Retry-After": { "schema": { "type": "integer" }, "description": "Seconds until you can retry" }
         },
         "content": {
           "application/json": {
@@ -146,7 +162,7 @@
         "operationId": "listArticles",
         "tags": ["Content"],
         "summary": "List articles",
-        "description": "Returns all licensable articles for your publisher account, with pricing and sales stats. Results are paginated (max 100 per page).",
+        "description": "Returns all licensable articles registered under your publisher account, ordered by creation date (newest first). Each article includes its current pricing for both human and AI licenses, plus lifetime sales stats.\n\nThis is the right starting point if you're building an integration that needs to browse your catalog — for example, to let a downstream buyer choose what to license, or to sync your article list to an external system.\n\n**Pagination** — results are capped at 100 per page. Use `limit` and `offset` to page through large catalogs.\n\n**Filtering by type** — if you pass `type=ai`, you'll only see articles that have an AI price set. Useful if you're building an AI-specific purchasing flow and don't want to show articles that aren't available for that license type.",
         "security": [{ "ApiKeyAuth": [] }],
         "parameters": [
           {
@@ -160,24 +176,24 @@
             "name": "limit",
             "in": "query",
             "schema": { "type": "integer", "default": 50, "maximum": 100 },
-            "description": "Number of results per page"
+            "description": "Number of results per page. Max 100."
           },
           {
             "name": "offset",
             "in": "query",
             "schema": { "type": "integer", "default": 0 },
-            "description": "Pagination offset"
+            "description": "Zero-based offset for pagination. To get page 2 with `limit=50`, pass `offset=50`."
           },
           {
             "name": "type",
             "in": "query",
             "schema": { "type": "string", "enum": ["human", "ai"] },
-            "description": "Filter to only articles that have a price set for this license type"
+            "description": "Filter to only articles that have a price set for this license type. Omit to return all articles regardless of pricing."
           }
         ],
         "responses": {
           "200": {
-            "description": "List of articles",
+            "description": "Paginated list of articles",
             "content": {
               "application/json": {
                 "schema": {
@@ -188,7 +204,7 @@
                       "type": "object",
                       "properties": {
                         "articles": { "type": "array", "items": { "$ref": "#/components/schemas/ArticleSummary" } },
-                        "total": { "type": "integer", "example": 142 },
+                        "total": { "type": "integer", "example": 142, "description": "Total number of licensable articles (ignores pagination)" },
                         "limit": { "type": "integer", "example": 50 },
                         "offset": { "type": "integer", "example": 0 }
                       }
@@ -229,7 +245,7 @@
         "operationId": "getArticle",
         "tags": ["Content"],
         "summary": "Get article",
-        "description": "Returns full details for a single article, including pricing, lifetime stats, and the 10 most recent licenses issued.",
+        "description": "Fetch full details for a single article by its UUID — including pricing, lifetime revenue, total licenses sold, and the 10 most recent licenses issued for it (anonymized to name/org).\n\nThis is useful for building a **license history view** or for verifying an article's current pricing before issuing a license programmatically.\n\n> 💡 You can get an article's UUID from the `list articles` response, or from your Opedd dashboard by clicking into any article.",
         "security": [{ "ApiKeyAuth": [] }],
         "parameters": [
           {
@@ -243,12 +259,12 @@
             "in": "query",
             "required": true,
             "schema": { "type": "string", "format": "uuid" },
-            "description": "Article UUID"
+            "description": "The UUID of the article. You can find this in the list articles response or in your dashboard."
           }
         ],
         "responses": {
           "200": {
-            "description": "Article detail",
+            "description": "Full article details with recent license activity",
             "content": {
               "application/json": {
                 "example": {
@@ -295,7 +311,7 @@
         "operationId": "purchaseLicense",
         "tags": ["Licenses"],
         "summary": "Purchase a license",
-        "description": "Issues a single license for one article. Returns a unique license key immediately. Sends a Handshake Email to the buyer and registers the license on Base (non-blocking).\n\n**Rate limit:** 30 purchases per API key per hour.",
+        "description": "Issues a single license for one article. This is the core of the Opedd API.\n\nWhen you call this endpoint:\n1. A unique `OP-XXXX-XXXX` license key is generated and recorded in the immutable ledger\n2. The buyer receives a **Handshake Email** with their license certificate and a verification link\n3. The license is registered on the Base blockchain (non-blocking — your response comes back immediately)\n4. Your publisher webhook fires with a `license.issued` event (if configured)\n\nThis endpoint is intended for **publisher-initiated** workflows — for example, you've already collected payment via your own checkout and now want to issue a license. If you need the buyer to pay directly, use the Opedd checkout flow or the `agent-purchase` endpoint instead.\n\n**Choosing a license type:**\n- Use `human` for journalists, academics, or anyone republishing the article\n- Use `ai` for companies adding content to a training dataset\n- Use `ai_inference` for RAG pipelines and retrieval systems that query content at runtime\n\n> ⚠️ The article must belong to your publisher account (matched by API key). Attempting to issue a license for another publisher's article will return a `404`.\n\n**Rate limit:** 30 purchases per API key per hour.",
         "security": [{ "ApiKeyAuth": [] }],
         "parameters": [
           {
@@ -316,23 +332,21 @@
                   "article_id": {
                     "type": "string",
                     "format": "uuid",
-                    "description": "UUID of the article to license"
+                    "description": "UUID of the article to license. Must be owned by the API key's publisher account."
                   },
-                  "license_type": {
-                    "$ref": "#/components/schemas/LicenseType"
-                  },
+                  "license_type": { "$ref": "#/components/schemas/LicenseType" },
                   "buyer_email": {
                     "type": "string",
                     "format": "email",
-                    "description": "Email address to receive the license certificate"
+                    "description": "The buyer's email. They'll receive a Handshake Email with their license key, certificate PDF, and a link to verify on-chain."
                   },
                   "buyer_name": {
                     "type": "string",
-                    "description": "Full name of the licensee"
+                    "description": "Full name of the licensee. Included in the certificate and Handshake Email."
                   },
                   "buyer_organization": {
                     "type": "string",
-                    "description": "Organization the license is issued to"
+                    "description": "The organization the license is issued to (e.g. `Acme AI Corp`). Shown in the certificate."
                   },
                   "intended_use": {
                     "$ref": "#/components/schemas/IntendedUse"
@@ -352,7 +366,7 @@
         },
         "responses": {
           "201": {
-            "description": "License issued",
+            "description": "License issued — the buyer has been emailed their key",
             "content": {
               "application/json": {
                 "example": {
@@ -386,6 +400,14 @@
             }
           },
           "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "Licensing not enabled for this article",
+            "content": {
+              "application/json": {
+                "example": { "success": false, "error": "Licensing not enabled for this article" }
+              }
+            }
+          },
           "404": { "$ref": "#/components/responses/NotFound" },
           "429": { "$ref": "#/components/responses/RateLimited" }
         }
@@ -396,7 +418,7 @@
         "operationId": "batchPurchase",
         "tags": ["Licenses"],
         "summary": "Batch purchase licenses",
-        "description": "Purchase licenses for up to 50 articles in a single request. All licenses share the same buyer details. Returns a summary and individual license keys.\n\nA consolidated email with all keys is sent to `buyer_email`. Each license is registered on-chain.\n\n**Rate limit:** 10 batch requests per API key per hour.",
+        "description": "Purchase licenses for up to **50 articles in a single request**. All items share the same buyer details and intended use. Perfect for AI companies that want to license a curated dataset in one shot.\n\nHere's what happens under the hood:\n1. All articles are validated upfront — if any are invalid, the entire request is rejected with a clear error message\n2. Each license is issued, registered on-chain, and logged individually\n3. A single consolidated email is sent to `buyer_email` with a table of all license keys\n4. Your publisher webhook fires once per issued license\n\n**Partial failures** — if individual items fail after the batch has been accepted (rare — e.g. a key generation collision), those items will have an `error` field instead of a `license_key` in the response. The `summary` object tells you exactly how many succeeded.\n\n> 💡 Need more than 50? Split your items into multiple batch requests. The rate limit is 10 batch requests per hour, so you can process up to 500 articles per hour.\n\n**Rate limit:** 10 batch requests per API key per hour.",
         "security": [{ "ApiKeyAuth": [] }],
         "parameters": [
           {
@@ -417,7 +439,7 @@
                   "items": {
                     "type": "array",
                     "maxItems": 50,
-                    "description": "Array of articles to license",
+                    "description": "Array of articles to license. Each item needs an `article_id` and a `license_type`.",
                     "items": {
                       "type": "object",
                       "required": ["article_id", "license_type"],
@@ -427,7 +449,11 @@
                       }
                     }
                   },
-                  "buyer_email": { "type": "string", "format": "email" },
+                  "buyer_email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email to receive the batch license summary with all keys in a single email."
+                  },
                   "buyer_name": { "type": "string" },
                   "buyer_organization": { "type": "string" },
                   "intended_use": { "$ref": "#/components/schemas/IntendedUse" }
@@ -447,7 +473,7 @@
         },
         "responses": {
           "201": {
-            "description": "Batch licenses issued",
+            "description": "Batch processed — check `summary.failed` for any partial failures",
             "content": {
               "application/json": {
                 "example": {
@@ -491,7 +517,7 @@
         "operationId": "verifyLicense",
         "tags": ["Licenses"],
         "summary": "Verify a license",
-        "description": "Verify a license key and retrieve its full details. **Public — no API key required.**\n\nReturns blockchain proof for all licenses. For `ai` and `ai_inference` licenses, also returns a machine-readable JSON-LD object for automated compliance checks.",
+        "description": "Verify that a license key is valid and retrieve its full details — including what article it covers, who it was issued to, and its on-chain proof. **This endpoint is public — no API key needed.**\n\nThis is the endpoint your compliance team, legal team, or automated pipeline should hit to confirm that a piece of content was properly licensed.\n\n**What `valid: true` means:**\n- The license key exists in the Opedd ledger\n- The transaction has `status: completed`\n- It has not been revoked\n\n**Blockchain proof** — for every license, the response includes a `blockchain_proof` object showing whether it's been registered on Base and a link to the transaction on BaseScan.\n\n**Machine-readable data** — for `ai` and `ai_inference` licenses, the response includes a `machine_readable` JSON-LD object. This is designed to be embedded in dataset cards, model cards, or compliance reports as structured proof of licensing.\n\n```bash\n# Anyone can verify — no API key needed\ncurl \"https://djdzcciayennqchjgybx.supabase.co/functions/v1/api?action=verify&key=OP-A1B2-C3D4\"\n```",
         "parameters": [
           {
             "name": "action",
@@ -504,12 +530,12 @@
             "in": "query",
             "required": true,
             "schema": { "$ref": "#/components/schemas/LicenseKey" },
-            "description": "License key in `OP-XXXX-XXXX` format"
+            "description": "The license key to verify, in `OP-XXXX-XXXX` format."
           }
         ],
         "responses": {
           "200": {
-            "description": "License details",
+            "description": "License details and proof",
             "content": {
               "application/json": {
                 "example": {
@@ -569,7 +595,7 @@
         "operationId": "getUsage",
         "tags": ["Publisher"],
         "summary": "Usage stats",
-        "description": "Returns API usage statistics for your publisher account — content counts, transaction totals, revenue, and current rate limits.",
+        "description": "Returns a snapshot of your publisher account — total articles, active licenses, revenue, and how many events have fired in the last 24 hours.\n\nUseful for building internal dashboards or monitoring integrations. You can poll this endpoint to track revenue in real time.",
         "security": [{ "ApiKeyAuth": [] }],
         "parameters": [
           {
@@ -581,7 +607,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Usage statistics",
+            "description": "Account usage snapshot",
             "content": {
               "application/json": {
                 "example": {
@@ -619,20 +645,20 @@
         "operationId": "lookupArticle",
         "tags": ["Content"],
         "summary": "Lookup article by URL",
-        "description": "Discover whether a specific article URL has a license available. Returns pricing, license type, and a direct purchase URL.\n\nAlso sets HTTP headers for programmatic discovery:\n- `X-License-Available: true`\n- `X-License-Human-Price: 10`\n- `X-License-AI-Price: 50`\n- `X-License-Purchase-URL: https://opedd.com/buy/...`",
+        "description": "Check whether a specific article URL is registered in Opedd and has a license available — without knowing the article's UUID.\n\nThis is especially useful for browser extensions, AI agents crawling content, or any integration that encounters an article URL in the wild and wants to check if it can be licensed.\n\n**Discovery headers** — in addition to the JSON body, the response includes HTTP headers for programmatic sniffing:\n\n```\nX-License-Available: true\nX-License-Human-Price: 10\nX-License-AI-Price: 50\nX-License-Protocol: opedd/1.0\nX-License-Purchase-URL: https://opedd.com/buy/c41371c2...\nX-License-API: https://djdzcciayennqchjgybx.supabase.co/functions/v1/agent-purchase\n```\n\nAn AI agent can do a `HEAD` request to any URL and check these headers before deciding whether to proceed with a purchase — no JSON parsing required.",
         "parameters": [
           {
             "name": "source_url",
             "in": "query",
             "required": true,
             "schema": { "type": "string", "format": "uri" },
-            "description": "The canonical URL of the article",
+            "description": "The canonical URL of the article you want to check.",
             "example": "https://publisher.com/articles/ai-newsrooms"
           }
         ],
         "responses": {
           "200": {
-            "description": "Article found with license available",
+            "description": "Article found — license is available",
             "content": {
               "application/json": {
                 "example": {
@@ -651,7 +677,9 @@
               }
             }
           },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "404": {
+            "description": "Article not found — either not registered in Opedd or licensing is disabled"
+          }
         }
       }
     },
@@ -660,7 +688,7 @@
         "operationId": "agentPurchase",
         "tags": ["Agent"],
         "summary": "Agentic license purchase",
-        "description": "Purchase a license directly from an AI agent — no pre-authorization, no redirect. Accepts a Stripe payment method ID or a USDC on-chain transaction hash. Returns a license key immediately.\n\nDesigned for AI agents and automated pipelines. Supports:\n- **Stripe** — provide a `pm_...` payment method ID from your Stripe integration\n- **USDC** — provide a transaction hash of a completed USDC transfer on Base\n\n**Rate limit:** 10 purchases per buyer email per hour.",
+        "description": "Purchase a license directly from an AI agent — no pre-authorization, no browser redirect, no human in the loop.\n\nThis endpoint is the backbone of Opedd's agentic licensing protocol. An AI agent can discover content via `lookup-article` or `license-discovery`, then call this endpoint with a payment method to get a license key in a single round-trip.\n\n**Supported payment methods:**\n\n**Stripe (`stripe_pm`)** — provide a `pm_...` payment method ID. The payment method must already exist in Stripe (e.g. saved to a customer). Opedd charges it, confirms the payment, and issues the license immediately.\n\n**USDC (`usdc`)** — provide the hash of a completed USDC transfer on Base. Opedd reads the chain to verify the transfer amount and recipient before issuing. No double-spending: each `tx_hash` can only be used once.\n\n**Finding the article** — you can provide either `article_id` (UUID) or `article_url` (canonical URL). The URL lookup normalizes trailing slashes and `www.` variants automatically.\n\n> 🤖 **For MCP users**: if you're using the Opedd MCP server (`opedd-mcp`), this endpoint is called automatically by the `purchase_license` tool. You don't need to call it directly.\n\n**Rate limit:** 10 purchases per `buyer_email` per hour.",
         "requestBody": {
           "required": true,
           "content": {
@@ -680,14 +708,18 @@
                     "description": "Canonical URL of the article. Either `article_id` or `article_url` is required."
                   },
                   "license_type": { "$ref": "#/components/schemas/LicenseType" },
-                  "buyer_email": { "type": "string", "format": "email" },
+                  "buyer_email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email for the license certificate. For agents, this is typically the operator's email."
+                  },
                   "buyer_name": { "type": "string" },
                   "buyer_organization": { "type": "string" },
                   "intended_use": { "$ref": "#/components/schemas/IntendedUse" },
                   "payment": {
                     "type": "object",
                     "required": ["method"],
-                    "description": "Payment details",
+                    "description": "Payment details. Choose `stripe_pm` for card payments or `usdc` for on-chain.",
                     "oneOf": [
                       {
                         "title": "Stripe payment method",
@@ -695,7 +727,7 @@
                           "method": { "type": "string", "enum": ["stripe_pm"] },
                           "payment_method_id": {
                             "type": "string",
-                            "description": "Stripe payment method ID (`pm_...`)",
+                            "description": "A Stripe payment method ID (`pm_...`), already saved in Stripe.",
                             "example": "pm_1ABC..."
                           }
                         },
@@ -707,13 +739,14 @@
                           "method": { "type": "string", "enum": ["usdc"] },
                           "tx_hash": {
                             "type": "string",
-                            "description": "Transaction hash of the completed USDC transfer on Base",
+                            "description": "Transaction hash of a completed USDC transfer to the Opedd platform address on Base.",
                             "example": "0xabc123..."
                           },
                           "chain": {
                             "type": "string",
                             "enum": ["base", "base_sepolia"],
-                            "default": "base"
+                            "default": "base",
+                            "description": "The chain the USDC transaction was submitted on. Use `base` for production."
                           }
                         },
                         "required": ["method", "tx_hash"]
@@ -724,7 +757,7 @@
               },
               "examples": {
                 "stripe": {
-                  "summary": "Pay with Stripe",
+                  "summary": "💳 Pay with Stripe",
                   "value": {
                     "article_url": "https://publisher.com/articles/ai-newsrooms",
                     "license_type": "ai",
@@ -738,7 +771,7 @@
                   }
                 },
                 "usdc": {
-                  "summary": "Pay with USDC",
+                  "summary": "🔵 Pay with USDC on Base",
                   "value": {
                     "article_id": "c41371c2-842d-4bc1-acd0-40466ad34e99",
                     "license_type": "ai_inference",
@@ -757,7 +790,7 @@
         },
         "responses": {
           "201": {
-            "description": "License issued",
+            "description": "License issued — key is ready to use",
             "content": {
               "application/json": {
                 "example": {
@@ -784,10 +817,18 @@
             }
           },
           "402": {
-            "description": "Payment failed",
+            "description": "Payment failed — the charge was declined or the USDC transfer couldn't be verified",
             "content": {
               "application/json": {
-                "example": { "success": false, "error": "Payment not completed: Stripe status=requires_payment_method" }
+                "example": { "success": false, "error": "Your card was declined. Please use a different payment method." }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict — USDC transaction hash already used",
+            "content": {
+              "application/json": {
+                "example": { "success": false, "error": "This USDC transaction has already been used to issue a license" }
               }
             }
           },
@@ -800,26 +841,26 @@
       "get": {
         "operationId": "browseRegistry",
         "tags": ["Registry"],
-        "summary": "Registry of Proof",
-        "description": "Browse the public Registry of Proof — the immutable, on-chain verified record of all licenses issued through Opedd. **Public — no API key required.**\n\nFilter by license key, article, or publisher. Without filters, returns a global feed of recent licenses.",
+        "summary": "Browse the Registry of Proof",
+        "description": "The Registry of Proof is Opedd's public, append-only record of every license ever issued. It's fully open — no API key, no account required. **Think of it as a public ledger for content rights.**\n\nEvery entry in the Registry includes the license key, article title, publisher name, licensee organization (if provided), the amount paid, and the on-chain transaction hash once confirmed.\n\n**How to use it:**\n- Query by `license_key` to look up a specific license\n- Query by `article_id` to see all licenses for a particular article\n- Query by `publisher_id` to see all licenses issued for a publisher's content\n- Query with no parameters to get a live global feed of recent licenses\n\nThis endpoint is designed to power compliance dashboards, legal audit trails, and public transparency pages. If an AI company wants to publicly demonstrate they've licensed their training data, the Registry is how they do it.",
         "parameters": [
           {
             "name": "license_key",
             "in": "query",
             "schema": { "$ref": "#/components/schemas/LicenseKey" },
-            "description": "Filter to a specific license key"
+            "description": "Look up a specific license key."
           },
           {
             "name": "article_id",
             "in": "query",
             "schema": { "type": "string", "format": "uuid" },
-            "description": "Filter by article"
+            "description": "Filter to all licenses for a specific article."
           },
           {
             "name": "publisher_id",
             "in": "query",
             "schema": { "type": "string", "format": "uuid" },
-            "description": "Filter by publisher"
+            "description": "Filter to all licenses for a specific publisher's content."
           },
           {
             "name": "limit",
@@ -868,26 +909,26 @@
       "get": {
         "operationId": "licenseDiscovery",
         "tags": ["Agent"],
-        "summary": "License discovery",
-        "description": "Returns a machine-readable `opedd.json` discovery file for a publisher. AI agents and crawlers use this to discover what content is available for licensing, current pricing, and how to purchase programmatically.\n\nEquivalent to a `robots.txt` for AI licensing.",
+        "summary": "License discovery (opedd.json)",
+        "description": "Returns a machine-readable `opedd.json` discovery file for a publisher — analogous to `robots.txt` or `sitemap.xml`, but for licensing.\n\nAI agents and crawlers fetch this file to understand:\n- How much content is available for licensing\n- What the default prices are\n- Which endpoints to use to look up and purchase specific articles\n- Any special instructions the publisher has left for AI systems\n\n**How to serve it on your own domain:**\n\nAdd this to your site's `<head>` or serve it at `/.well-known/opedd.json`:\n\n```html\n<link rel=\"opedd-discovery\"\n  href=\"https://djdzcciayennqchjgybx.supabase.co/functions/v1/license-discovery?publisher_id=YOUR_PUBLISHER_ID\"\n  type=\"application/json\" />\n```\n\nOr redirect `yourdomain.com/.well-known/opedd.json` → this endpoint.",
         "parameters": [
           {
             "name": "publisher_id",
             "in": "query",
             "schema": { "type": "string", "format": "uuid" },
-            "description": "Publisher UUID"
+            "description": "Publisher UUID. Use either `publisher_id` or `domain`."
           },
           {
             "name": "domain",
             "in": "query",
             "schema": { "type": "string" },
-            "description": "Publisher domain (alternative to publisher_id)",
+            "description": "Publisher domain — e.g. `publisher.com`. Opedd will look up the matching publisher.",
             "example": "publisher.com"
           }
         ],
         "responses": {
           "200": {
-            "description": "Publisher discovery file",
+            "description": "Machine-readable publisher discovery file",
             "content": {
               "application/json": {
                 "example": {
@@ -913,7 +954,7 @@
                     "verify": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/api?action=verify",
                     "registry": "https://djdzcciayennqchjgybx.supabase.co/functions/v1/registry"
                   },
-                  "agent_instructions": "Use the lookup endpoint to check if an article is licensable. Then use agent-purchase with a Stripe payment method or USDC transaction to obtain a license key."
+                  "agent_instructions": "Use the lookup endpoint to check if a specific article is licensable. Then call agent-purchase with a Stripe payment method or a USDC transaction hash to get a license key immediately."
                 }
               }
             }
@@ -926,22 +967,20 @@
         "operationId": "getCertificate",
         "tags": ["Licenses"],
         "summary": "Download certificate (PDF)",
-        "description": "Download a PDF license certificate for a given license key. **Public — no API key required.**",
+        "description": "Download a beautifully formatted PDF license certificate for any valid license key. **Public — no API key required.**\n\nThe certificate includes the license key, article title, publisher name, licensee details, license type, amount paid, and issuance date. It's designed to be attached to legal agreements or stored in a compliance archive.\n\n```bash\n# Download to a file\ncurl \"https://djdzcciayennqchjgybx.supabase.co/functions/v1/certificate?key=OP-A1B2-C3D4\" \\\n  --output license-certificate.pdf\n```",
         "parameters": [
           {
             "name": "key",
             "in": "query",
             "required": true,
             "schema": { "$ref": "#/components/schemas/LicenseKey" },
-            "description": "License key"
+            "description": "License key in `OP-XXXX-XXXX` format."
           }
         ],
         "responses": {
           "200": {
             "description": "PDF certificate",
-            "content": {
-              "application/pdf": {}
-            }
+            "content": { "application/pdf": {} }
           },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
@@ -952,22 +991,19 @@
         "operationId": "getInvoice",
         "tags": ["Licenses"],
         "summary": "Download invoice (PDF)",
-        "description": "Download a PDF invoice for a completed license purchase. Includes Bill From/To, issue date, Net-30 due date, archive coverage period, and PAID/PENDING status. **Public — no API key required.**",
+        "description": "Download a PDF invoice for a completed license purchase. **Public — no API key required.**\n\nThe invoice is formatted as a standard A4 document and includes:\n- Bill From (Opedd / publisher) and Bill To (licensee)\n- Issue date and Net-30 due date\n- Archive coverage period\n- A PAID or PENDING badge\n\nUseful for buyers who need to submit a receipt to their finance team or include it in a procurement audit trail.\n\n```bash\ncurl \"https://djdzcciayennqchjgybx.supabase.co/functions/v1/invoice?key=OP-A1B2-C3D4\" \\\n  --output invoice.pdf\n```",
         "parameters": [
           {
             "name": "key",
             "in": "query",
             "required": true,
-            "schema": { "$ref": "#/components/schemas/LicenseKey" },
-            "description": "License key"
+            "schema": { "$ref": "#/components/schemas/LicenseKey" }
           }
         ],
         "responses": {
           "200": {
             "description": "PDF invoice",
-            "content": {
-              "application/pdf": {}
-            }
+            "content": { "application/pdf": {} }
           },
           "404": { "$ref": "#/components/responses/NotFound" }
         }
@@ -978,19 +1014,20 @@
         "operationId": "aiDefensePolicy",
         "tags": ["Publisher"],
         "summary": "AI crawler policy",
-        "description": "Generate a `robots.txt` or `ai.txt` blocking file for a publisher. Blocks 16 known AI crawlers including GPTBot, ClaudeBot, Googlebot-Extended, and more.\n\nServe this from your site at `/robots.txt` or `/ai.txt` to enforce your licensing policy against AI scrapers.",
+        "description": "Generate a `robots.txt` or `ai.txt` file that blocks AI crawlers from scraping your content without a license. Covers 16 known AI bots including GPTBot, ClaudeBot, Googlebot-Extended, PerplexityBot, and more.\n\n**Why this matters:** Most AI crawlers respect `robots.txt`. By serving this file, you signal that your content is behind Opedd's licensing system — and provide a path for compliant access via the agent purchase flow.\n\n**How to use it — step by step:**\n\n1. Find your Publisher ID in your Opedd dashboard under Settings\n2. Fetch the policy from this endpoint\n3. Serve it at `yourdomain.com/robots.txt` (or append it to your existing one)\n\n```bash\n# Fetch and save as robots.txt\ncurl \"https://djdzcciayennqchjgybx.supabase.co/functions/v1/ai-defense-policy?publisher_id=YOUR_ID\" \\\n  > robots.txt\n```\n\nFor Next.js or similar, you can return it dynamically:\n\n```js\n// pages/robots.txt.js or app/robots.ts\nexport async function GET() {\n  const res = await fetch(\n    `https://djdzcciayennqchjgybx.supabase.co/functions/v1/ai-defense-policy?publisher_id=${process.env.OPEDD_PUBLISHER_ID}`\n  )\n  const text = await res.text()\n  return new Response(text, { headers: { 'Content-Type': 'text/plain' } })\n}\n```",
         "parameters": [
           {
             "name": "publisher_id",
             "in": "query",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "Your publisher UUID. Find it in Settings → API in your dashboard."
           },
           {
             "name": "format",
             "in": "query",
             "schema": { "type": "string", "enum": ["robots", "ai"], "default": "robots" },
-            "description": "`robots` returns robots.txt format. `ai` returns ai.txt format."
+            "description": "`robots` returns standard `robots.txt` format. `ai` returns `ai.txt` format for platforms that support it."
           }
         ],
         "responses": {
@@ -998,7 +1035,7 @@
             "description": "Crawler policy file",
             "content": {
               "text/plain": {
-                "example": "User-agent: GPTBot\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n\n# Licensed via Opedd — opedd.com"
+                "example": "User-agent: GPTBot\nDisallow: /\n\nUser-agent: ClaudeBot\nDisallow: /\n\nUser-agent: PerplexityBot\nDisallow: /\n\n# This site's content is licensed via Opedd.\n# To access content programmatically, visit: https://opedd.com"
               }
             }
           }
@@ -1009,8 +1046,8 @@
       "post": {
         "operationId": "resendLicenses",
         "tags": ["Licenses"],
-        "summary": "Resend license keys",
-        "description": "Re-send all license keys associated with an email address in a single consolidated email. Useful if a buyer lost their keys.\n\n**Rate limit:** 3 requests per email per hour.",
+        "summary": "Resend license keys by email",
+        "description": "Re-send all license keys associated with an email address in a single consolidated email. No authentication required — anyone can trigger a resend for their own email.\n\nThis is useful when a buyer has lost their license email or needs to forward it to a colleague. The email contains a table of all licenses associated with that address, with key, article title, type, and a verify link for each.\n\n> 🔒 To prevent abuse, this endpoint is rate limited to **3 requests per email address per hour**. The response is always the same regardless of whether the email is found — this prevents email enumeration.",
         "requestBody": {
           "required": true,
           "content": {
@@ -1019,7 +1056,11 @@
                 "type": "object",
                 "required": ["email"],
                 "properties": {
-                  "email": { "type": "string", "format": "email" }
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "The email address to resend licenses to."
+                  }
                 }
               },
               "example": { "email": "buyer@example.com" }
@@ -1028,7 +1069,7 @@
         },
         "responses": {
           "200": {
-            "description": "Email sent",
+            "description": "Request accepted — if licenses exist for this email, they've been sent",
             "content": {
               "application/json": {
                 "example": { "success": true, "data": { "sent": true, "count": 3 } }
@@ -1039,6 +1080,5 @@
         }
       }
     }
-  },
-  "x-scalar-theme": "default"
+  }
 }
