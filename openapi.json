@@ -825,9 +825,9 @@
                     "blockchain_proof": {
                       "registered": true,
                       "valid": true,
-                      "chain": "base-sepolia",
-                      "contract": "0xf2cb1347de16c362eb67549dc1521fc8ab2f8d6d",
-                      "explorer_url": "https://sepolia.basescan.org/tx/0xabc123..."
+                      "chain": "base-mainnet",
+                      "contract": "0x0ca09c63cd768490dad1734594c0ee3bfd3cce55",
+                      "explorer_url": "https://basescan.org/tx/0xabc123..."
                     },
                     "machine_readable": {
                       "@context": "https://opedd.com/schema/v1",
