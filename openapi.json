@@ -3,7 +3,7 @@
   "info": {
     "title": "Opedd API",
     "version": "1.0.0",
-    "description": "# Welcome to the Opedd API \ud83d\udc4b\n\nOpedd is the licensing infrastructure for the open web \u2014 think of it as the **Stripe of content licensing**. Publishers register their content, set prices, and get paid. AI companies, researchers, and platforms purchase rights programmatically, get a license key, and can prove compliance on-chain.\n\nEvery license issued through Opedd is:\n- \u2705 Recorded in our immutable ledger\n- \u26d3\ufe0f Registered on Base (Coinbase's L2) for on-chain proof\n- \ud83d\udce7 Confirmed via a Handshake Email to the buyer\n\n---\n\n## Quick start \u2014 3 steps\n\n**Step 1 \u2014 Get your API key**\n\nLog in to your Opedd dashboard \u2192 Settings \u2192 API. Your key looks like `op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`. Keep it secret \u2014 it has full access to your publisher account.\n\n**Step 2 \u2014 Make your first request**\n\n```bash\ncurl https://api.opedd.com/api?action=articles \\\n  -H \"X-API-Key: op_your_key_here\"\n```\n\nYou'll get back a paginated list of your licensable articles with pricing.\n\n**Step 3 \u2014 Issue your first license**\n\n```bash\ncurl -X POST \\\n  \"https://api.opedd.com/api?action=purchase\" \\\n  -H \"X-API-Key: op_your_key_here\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"article_id\": \"<your-article-uuid>\",\n    \"license_type\": \"ai\",\n    \"buyer_email\": \"buyer@example.com\"\n  }'\n```\n\nThat's it. You'll get back an `OP-XXXX-XXXX` license key, the buyer gets an email, and the license is registered on-chain.\n\n---\n\n## Authentication\n\nAll publisher endpoints require your API key in the `X-API-Key` header.\n\n```\nX-API-Key: op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n```\n\nA few endpoints are **public** \u2014 no key needed: `verify`, `registry`, `lookup-article`, `certificate`, `invoice`, `license-discovery`. These are safe to call from the browser or an AI agent.\n\n---\n\n## Base URL\n\n```\nhttps://api.opedd.com\n```\n\n---\n\n## Rate limits\n\nAll rate-limited endpoints return these headers so you can handle limits gracefully:\n\n| Header | Description |\n|---|---|\n| `X-RateLimit-Limit` | Max requests allowed in the window |\n| `X-RateLimit-Remaining` | Requests left in the current window |\n| `X-RateLimit-Reset` | Unix timestamp when the window resets |\n| `Retry-After` | Seconds to wait before retrying |\n\n---\n\n## Error format\n\nAll errors follow the same shape:\n\n```json\n{\n  \"success\": false,\n  \"error\": \"A human-readable description of what went wrong\"\n}\n```\n\n| Status | Meaning |\n|---|---|\n| `400` | Bad request \u2014 missing or invalid parameter |\n| `401` | Unauthorized \u2014 invalid or missing API key |\n| `402` | Payment failed |\n| `403` | Forbidden \u2014 licensing not enabled for this article |\n| `404` | Not found |\n| `409` | Conflict \u2014 e.g. transaction already used |\n| `429` | Rate limit exceeded |\n| `500` | Internal server error |\n\n---\n\n## License types\n\nOpedd supports three license types. Choose the right one for your buyer:\n\n| Type | Label | Use case |\n|---|---|---|\n| `human` | Human Republication | Journalists, researchers, editorial reuse |\n| `ai` | AI Training | Training datasets, fine-tuning, model pretraining |\n| `ai_inference` | AI Inference | RAG pipelines, retrieval-augmented generation, real-time lookups |\n| `archive` | Archive License | Full catalog access for a publisher's entire content library |\n| `syndication` | Syndication | Editorial republication across media networks |\n\n---\n\n## On-chain proof\n\nEvery license is registered on the **OpeddRegistry** smart contract deployed on Base (Coinbase L2):\n\n```\n0x0ca09c63cd768490dad1734594c0ee3bfd3cce55\n```\n\nRegistration is non-blocking \u2014 your API call returns immediately, and the on-chain write happens in the background. You can track `blockchain_status` in the Registry (`pending \u2192 submitted \u2192 confirmed`).\n\n---\n\nQuestions? Reach us at [opedd.com](https://opedd.com).",
+    "description": "# Welcome to the Opedd API\n\nOpedd is the licensing infrastructure for the open web \u2014 the **Stripe of content licensing**. Publishers register their content, set prices, and get paid. AI companies, researchers, and platforms purchase rights programmatically, get a license key, and can prove compliance on-chain.\n\nEvery license issued through Opedd is:\n- Recorded in our immutable ledger\n- Registered on-chain (Tempo primary, Base fallback) for cryptographic proof\n- Confirmed via a Handshake Email to the buyer\n\n---\n\n## Quick start \u2014 Publisher API (3 steps)\n\n**Step 1 \u2014 Get your API key**\n\nLog in to your Opedd dashboard \u2192 Settings \u2192 API. Your key looks like `op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`.\n\n**Step 2 \u2014 Make your first request**\n\n```bash\ncurl https://api.opedd.com/api?action=articles \\\n  -H \"X-API-Key: op_your_key_here\"\n```\n\n**Step 3 \u2014 Issue your first license**\n\n```bash\ncurl -X POST \"https://api.opedd.com/api?action=purchase\" \\\n  -H \"X-API-Key: op_your_key_here\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"article_id\": \"<uuid>\", \"license_type\": \"ai\", \"buyer_email\": \"buyer@example.com\"}'\n```\n\n---\n\n## Quick start \u2014 Enterprise / AI Lab (4 steps)\n\nSee the **Enterprise** section below for the full integration guide. Here's the summary:\n\n**Step 1 \u2014 Get a sandbox token (free, no payment)**\n\n```bash\ncurl -X POST https://api.opedd.com/enterprise-auth \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"action\": \"create_sandbox\", \"buyer_email\": \"eng@yourlab.com\", \"buyer_org\": \"Your AI Lab\"}'\n```\n\n**Step 2 \u2014 Browse the publisher catalog**\n\n```bash\ncurl https://api.opedd.com/publisher-directory?min_articles=1\n```\n\n**Step 3 \u2014 Preview content (truncated in sandbox)**\n\n```bash\ncurl https://api.opedd.com/content-delivery?article_id=<uuid> \\\n  -H \"Authorization: Bearer eat_sandbox_xxx\"\n```\n\n**Step 4 \u2014 Purchase a license**\n\n```bash\ncurl -X POST https://api.opedd.com/enterprise-license \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"publisher_ids\": [\"<uuid>\"], \"buyer_email\": \"eng@yourlab.com\", \"billing_type\": \"monthly\", \"license_tier\": \"rag\"}'\n```\n\n---\n\n## Authentication\n\n**Publisher endpoints** require your API key:\n```\nX-API-Key: op_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n```\n\n**Enterprise endpoints** use access keys and bearer tokens:\n```\n# Step 1: Exchange access key for token\nPOST /enterprise-auth { access_key: \"eak_xxx\", buyer_email: \"...\" }\n\n# Step 2: Use token for content delivery\nAuthorization: Bearer eat_xxx\n```\n\n**Public endpoints** (no auth): `verify-license`, `registry`, `lookup-article`, `publisher-directory`, `certificate`, `invoice`, `license-discovery`, `llms-txt`.\n\n---\n\n## Base URL\n\n```\nhttps://api.opedd.com\n```\n\n---\n\n## Rate limits\n\n| Endpoint | Limit |\n|---|---|\n| Publisher API (purchase) | 30/hr |\n| Publisher API (batch) | 10/hr |\n| Agent purchase | 10/hr per buyer_email |\n| Enterprise content feed | 360/min per access_key |\n| Content delivery | 200/min per token |\n| Enterprise auth | 5/hr per access_key |\n| Sandbox creation | 3/day per email |\n\n---\n\n## Error format\n\n```json\n{\"success\": false, \"error\": \"A human-readable description\"}\n```\n\n| Status | Meaning |\n|---|---|\n| `400` | Bad request \u2014 missing or invalid parameter |\n| `401` | Unauthorized \u2014 invalid or missing credentials |\n| `402` | Payment failed |\n| `403` | Forbidden \u2014 license doesn't cover this content |\n| `404` | Not found |\n| `422` | Unprocessable \u2014 publishers haven't opted into this tier |\n| `429` | Rate limit exceeded |\n| `500` | Internal server error |\n| `502` | Upstream error (Stripe) |\n\n---\n\n## License types\n\n| Type | Label | Use case |\n|---|---|---|\n| `human` | Human Republication | Journalists, researchers, editorial reuse |\n| `ai` | AI Training | Training datasets, fine-tuning, model pretraining |\n| `ai_inference` | AI Inference | RAG pipelines, retrieval-augmented generation |\n| `archive` | Archive License | Full catalog access for a publisher's entire library |\n| `syndication` | Syndication | Editorial republication across media networks |\n\n---\n\n## Enterprise license tiers\n\n| Tier | Covers |\n|---|---|\n| `rag` | Retrieval-augmented generation (default) |\n| `training` | Model fine-tuning and pretraining |\n| `inference` | Real-time AI inference outputs |\n| `full_ai` | All AI use cases (rag + training + inference) |\n\nPublishers opt into tiers individually. When purchasing, if a publisher hasn't opted into your requested tier, they're excluded from the license.\n\n---\n\n## Billing types\n\n| Type | Interval | Use case |\n|---|---|---|\n| `annual` | Yearly | Archive + forward feed bundled (default) |\n| `monthly` | Monthly | Forward feed only (new content, price = annual/12) |\n| `annual_plus_monthly` | Year + Month | Archive upfront + monthly forward feed |\n\n---\n\n## On-chain proof\n\nLicenses are registered on the **OpeddRegistry** smart contract:\n- **Primary:** Tempo (Stripe + Paradigm L1) \u2014 `0xf2cb1347de16c362eb67549dc1521fc8ab2f8d6d`\n- **Fallback:** Base (Coinbase L2) \u2014 `0x0ca09c63cd768490dad1734594c0ee3bfd3cce55`\n\nRegistration is non-blocking \u2014 your API call returns immediately. Track `blockchain_status`: `pending \u2192 submitted \u2192 confirmed`.\n\n---\n\nQuestions? Reach us at [opedd.com](https://opedd.com).",
     "contact": {
       "name": "Opedd Support",
       "url": "https://opedd.com"
@@ -38,11 +38,11 @@
     },
     {
       "name": "Enterprise",
-      "description": "## \ud83c\udfe2 Enterprise\n\nFor AI companies and organizations that need bulk access to publisher catalogs. Enterprise licensing gives you:\n- A single access_key covering multiple publishers\n- Paginated content feeds (JSON + XML)\n- Real-time webhooks on new content\n- Buyer authentication tokens (eat_xxx) for content delivery\n\nRate limits: 360 req/min per access_key."
+      "description": "## Enterprise Integration Guide\n\nFor AI companies and organizations that need bulk access to publisher catalogs.\n\n---\n\n### Architecture\n\n```\nYour AI Lab                    Opedd                         Publishers\n\u2502                               \u2502                              \u2502\n\u251c\u2500 POST /enterprise-auth \u2500\u2500\u2500\u2500\u2500\u25b6 Sandbox token (free)          \u2502\n\u251c\u2500 GET /publisher-directory \u2500\u25b6 Browse catalog + pricing      \u2502\n\u251c\u2500 GET /content-delivery \u2500\u2500\u2500\u25b6 Preview content (truncated)   \u2502\n\u2502                               \u2502                              \u2502\n\u251c\u2500 POST /enterprise-license \u2500\u25b6 Stripe subscription created   \u2502\n\u251c\u2500 Complete payment (Stripe) \u2500\u25b6 License activated (eak_)      \u2502\n\u251c\u2500 POST /enterprise-auth \u2500\u2500\u2500\u2500\u25b6 Bearer token (eat_, 30-day)   \u2502\n\u251c\u2500 GET /content-delivery \u2500\u2500\u2500\u25b6 Full article content          \u2502\n\u251c\u2500 GET /enterprise-license \u2500\u2500\u25b6 Paginated feed (JSON/XML)     \u2502\n\u2502                               \u2502                              \u2502\n\u2502                               \u251c\u2500 Monthly payouts (1st) \u2500\u2500\u2500\u2500\u25b6 80% via Stripe Connect\n\u2502                               \u251c\u2500 Webhooks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u25b6 content.published\n```\n\n---\n\n### Step 1: Get a sandbox token\n\nNo payment required. Get a free evaluation token to browse the catalog and preview content.\n\n```bash\ncurl -X POST https://api.opedd.com/enterprise-auth \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"action\": \"create_sandbox\", \"buyer_email\": \"eng@yourlab.com\", \"buyer_org\": \"Your Lab\"}'\n```\n\nResponse:\n```json\n{\"success\": true, \"data\": {\n  \"sandbox_token\": \"eat_sandbox_abc123...\",\n  \"mode\": \"sandbox\",\n  \"expires_at\": \"2026-04-26T00:00:00Z\"\n}}\n```\n\nSandbox grants: full publisher-directory access, truncated content (first 500 chars), metadata-only feeds. Rate limit: 3 tokens/day per email.\n\n---\n\n### Step 2: Browse the publisher catalog\n\n```bash\ncurl \"https://api.opedd.com/publisher-directory?min_articles=10&category=finance\"\n```\n\nResponse includes per-publisher pricing:\n```json\n{\"publishers\": [{\n  \"id\": \"uuid\",\n  \"name\": \"FinanceWeekly\",\n  \"article_count\": 450,\n  \"pricing\": {\n    \"human_per_article\": 5,\n    \"ai_per_article\": 25,\n    \"ai_annual\": 12000,\n    \"forward_feed_monthly\": 1000\n  },\n  \"sample_articles\": [{\"title\": \"...\", \"url\": \"...\"}]\n}]}\n```\n\nPricing is set by publishers. `ai_annual` = full catalog (archive + forward feed) per year. `forward_feed_monthly` = new content only, auto-derived as `ai_annual / 12`.\n\n---\n\n### Step 3: Preview content in sandbox\n\n```bash\ncurl \"https://api.opedd.com/content-delivery?article_id=<uuid>\" \\\n  -H \"Authorization: Bearer eat_sandbox_abc123...\"\n```\n\nSandbox returns truncated content (first 500 characters). Full content requires a paid license.\n\n---\n\n### Step 4: Purchase a license\n\nChoose your billing type and license tier:\n\n```bash\ncurl -X POST https://api.opedd.com/enterprise-license \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"publisher_ids\": [\"<pub-uuid-1>\", \"<pub-uuid-2>\"],\n    \"buyer_email\": \"eng@yourlab.com\",\n    \"buyer_org\": \"Your Lab\",\n    \"billing_type\": \"annual\",\n    \"license_tier\": \"rag\",\n    \"duration_months\": 12\n  }'\n```\n\nReturns a Stripe `client_secret` for payment completion. After payment, Opedd activates the license and sends an `eak_` access key to your email.\n\n---\n\n### Step 5: Authenticate and access content\n\nExchange your access key for a bearer token:\n\n```bash\ncurl -X POST https://api.opedd.com/enterprise-auth \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"access_key\": \"eak_xxx\", \"buyer_email\": \"eng@yourlab.com\"}'\n```\n\nThen fetch full content:\n\n```bash\ncurl \"https://api.opedd.com/content-delivery?article_id=<uuid>\" \\\n  -H \"Authorization: Bearer eat_xxx\"\n```\n\nOr sync your full licensed catalog:\n\n```bash\ncurl \"https://api.opedd.com/enterprise-license?access_key=eak_xxx&limit=200\"\n```\n\nSupports JSON and XML (RSS 2.0) via `&format=xml`. Cursor-based pagination.\n\n---\n\n### Python example\n\n```python\nimport requests\n\nBASE = \"https://api.opedd.com\"\n\n# Get sandbox token\nresp = requests.post(f\"{BASE}/enterprise-auth\", json={\n    \"action\": \"create_sandbox\",\n    \"buyer_email\": \"eng@yourlab.com\",\n    \"buyer_org\": \"Your Lab\"\n})\ntoken = resp.json()[\"data\"][\"sandbox_token\"]\n\n# Browse publishers\npubs = requests.get(f\"{BASE}/publisher-directory\", params={\"min_articles\": 10}).json()\nfor p in pubs[\"data\"][\"publishers\"]:\n    print(f\"{p['name']}: {p['article_count']} articles, ${p['pricing']['ai_annual']}/yr\")\n\n# Preview an article\narticle = requests.get(\n    f\"{BASE}/content-delivery\",\n    params={\"article_id\": pubs[\"data\"][\"publishers\"][0][\"sample_articles\"][0][\"id\"]},\n    headers={\"Authorization\": f\"Bearer {token}\"}\n).json()\nprint(article[\"data\"][\"title\"], article[\"data\"][\"content\"][:200])\n```\n\n---\n\n### Node.js example\n\n```javascript\nconst BASE = 'https://api.opedd.com';\n\n// Get sandbox token\nconst auth = await fetch(`${BASE}/enterprise-auth`, {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ action: 'create_sandbox', buyer_email: 'eng@yourlab.com', buyer_org: 'Your Lab' })\n}).then(r => r.json());\nconst token = auth.data.sandbox_token;\n\n// Browse catalog\nconst pubs = await fetch(`${BASE}/publisher-directory?min_articles=10`).then(r => r.json());\nconsole.log(`${pubs.data.publishers.length} publishers available`);\n\n// Preview content\nconst article = await fetch(`${BASE}/content-delivery?article_id=${articleId}`, {\n  headers: { Authorization: `Bearer ${token}` }\n}).then(r => r.json());\nconsole.log(article.data.title, article.data.sandbox ? '(preview)' : '(full)');\n```\n\n---\n\n### Webhooks\n\nEnterprise licenses can receive `content.published` webhooks when covered publishers post new articles. Provide a `buyer_webhook_url` when creating the license. Payloads are HMAC-SHA256 signed (secret returned once at creation).\n\n---\n\n### Revenue model\n\n- **20% Opedd platform fee**, 80% to publishers\n- Payouts distributed monthly (1st of each month) via Stripe Connect\n- Pro-rata by article volume: publishers who publish more earn more\n- Minimum payout: $0.50"
     },
     {
       "name": "Content Delivery",
-      "description": "## \ud83d\udce6 Content Delivery\n\nStream full article content to licensed buyers. Requires a buyer token (bk_live_xxx from portal or eat_xxx from enterprise auth).\n\nReturns full HTML body when available, or content_available:false with metadata when the publisher hasn't pushed content yet.\n\nRate limit: 200 req/min per token."
+      "description": "## Content Delivery\n\nStream full article content to licensed buyers. Accepts three token types:\n\n| Token prefix | Source | Content access |\n|---|---|---|\n| `eat_sandbox_` | Sandbox (free) | Truncated (first 500 chars) |\n| `eat_` | Enterprise auth | Full content |\n| `bk_live_` | Buyer portal | Full content |\n\nReturns full HTML body when available, or `content_available: false` with metadata when the publisher hasn't pushed content yet.\n\nRate limit: 200 req/min per token."
     }
   ],
   "components": {
@@ -1477,7 +1477,7 @@
     "/content-delivery": {
       "get": {
         "summary": "Stream licensed article content",
-        "description": "Returns full article content for a licensed buyer. Requires a buyer token (bk_live_xxx or eat_xxx).\n\nIf the article has no content_body yet, returns content:null with content_available:false instead of a 404.",
+        "description": "Returns article content for a licensed buyer. Accepts three token types:\n\n- `eat_sandbox_` \u2014 Truncated content (first 500 chars). Free, no payment required.\n- `eat_` \u2014 Full content via enterprise license. Validates publisher coverage.\n- `bk_live_` \u2014 Full content via individual/archive license.\n\nResponse includes provenance metadata (license key, blockchain proof, verification URL).\n\nRate limit: 200 req/min per token.",
         "tags": [
           "Content Delivery"
         ],
@@ -1498,18 +1498,62 @@
             "schema": {
               "type": "string"
             },
-            "description": "Bearer bk_live_xxx or Bearer eat_xxx"
+            "description": "`Bearer eat_sandbox_xxx`, `Bearer eat_xxx`, or `Bearer bk_live_xxx`"
           }
         ],
         "responses": {
           "200": {
-            "description": "Article content with provenance metadata"
+            "description": "Article content with provenance metadata",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "sandbox": {
+                    "summary": "Sandbox response (truncated)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "article_id": "uuid",
+                        "title": "Market Analysis Q1",
+                        "source_url": "https://financeweekly.com/market-q1",
+                        "content": "First 500 characters of the article...\n\n[... Content truncated \u2014 purchase an enterprise license for full access ...]",
+                        "sandbox": true,
+                        "content_truncated": true,
+                        "full_content_length": 4500,
+                        "license_type": "sandbox"
+                      }
+                    }
+                  },
+                  "enterprise": {
+                    "summary": "Enterprise response (full content)",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "article_id": "uuid",
+                        "title": "Market Analysis Q1",
+                        "content": "<full HTML content>",
+                        "content_available": true,
+                        "license_type": "enterprise",
+                        "provenance": {
+                          "license_id": "eak_xxx",
+                          "usage_rights": "Enterprise License \u2014 Licensed via Opedd Protocol",
+                          "protocol": "opedd",
+                          "protocol_version": "1.0"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
             "description": "Invalid or expired token"
           },
           "403": {
-            "description": "License does not cover this article"
+            "description": "License does not cover this article, or publisher has disabled content delivery"
+          },
+          "404": {
+            "description": "Article not found"
           },
           "429": {
             "description": "Rate limit exceeded (200 req/min per token)"
@@ -1520,7 +1564,7 @@
     "/enterprise-license": {
       "post": {
         "summary": "Create enterprise license subscription",
-        "description": "Purchase bulk catalog access covering one or more publishers. Creates a Stripe subscription and returns a checkout session.",
+        "description": "Purchase bulk catalog access covering one or more publishers. Creates a Stripe subscription (annual or monthly) and returns a `client_secret` for payment completion via Stripe.js.\n\nAfter payment, the license is activated automatically: an `eak_` access key is emailed to the buyer, Stripe Connect transfers fire to publishers, and the license appears in the enterprise content feed.\n\n**Billing types:**\n- `annual` (default): Yearly subscription for archive + forward feed bundled\n- `monthly`: Monthly subscription at `ai_annual_price / 12` per publisher (forward feed only)\n- `annual_plus_monthly`: Annual archive upfront + separate monthly forward feed subscription",
         "tags": [
           "Enterprise"
         ],
@@ -1530,42 +1574,118 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": ["buyer_email"],
                 "properties": {
                   "publisher_ids": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "format": "uuid"
                     },
-                    "description": "Publisher IDs to license"
+                    "description": "Publisher IDs to license (required for `custom` scope, max 500)"
                   },
                   "buyer_email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "eng@yourlab.com"
+                  },
+                  "buyer_name": {
                     "type": "string"
                   },
                   "buyer_org": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Your AI Lab"
+                  },
+                  "billing_type": {
+                    "type": "string",
+                    "enum": ["annual", "monthly", "annual_plus_monthly"],
+                    "default": "annual",
+                    "description": "`annual` = archive + forward bundled yearly. `monthly` = forward feed only at annual/12. `annual_plus_monthly` = both."
+                  },
+                  "license_tier": {
+                    "type": "string",
+                    "enum": ["rag", "training", "inference", "full_ai"],
+                    "default": "rag",
+                    "description": "AI use case tier. Publishers must have opted into this tier."
                   },
                   "scope": {
                     "type": "string",
-                    "enum": [
-                      "custom",
-                      "platform_wide"
-                    ]
+                    "enum": ["custom", "platform_wide"],
+                    "default": "custom",
+                    "description": "`custom` = specific publisher_ids. `platform_wide` = all opted-in publishers (requires pre-negotiated total_amount_cents)."
                   },
                   "duration_months": {
                     "type": "integer",
-                    "default": 12
+                    "default": 12,
+                    "minimum": 1,
+                    "maximum": 36
+                  },
+                  "buyer_webhook_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Receive `content.published` webhooks when covered publishers post new articles"
+                  },
+                  "total_amount_cents": {
+                    "type": "integer",
+                    "description": "Required for `platform_wide` scope (pre-negotiated flat fee in cents)"
                   }
                 }
+              },
+              "example": {
+                "publisher_ids": ["c3fb155f-340f-4595-88c2-0fe93b969c38"],
+                "buyer_email": "eng@yourlab.com",
+                "buyer_org": "Your AI Lab",
+                "billing_type": "annual",
+                "license_tier": "rag",
+                "duration_months": 12
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Stripe checkout session created"
+            "description": "Stripe subscription created. Complete payment using the `client_secret` with Stripe.js.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "license_id": "uuid",
+                    "client_secret": "pi_xxx_secret_xxx",
+                    "subscription_id": "sub_xxx",
+                    "billing_type": "annual",
+                    "billing_interval": "year",
+                    "license_tier": "rag",
+                    "total_amount_cents": 800000,
+                    "duration_months": 12,
+                    "auto_renews": true,
+                    "valid_from": "2026-03-27T00:00:00Z",
+                    "valid_until": "2027-03-27T00:00:00Z",
+                    "breakdown": [
+                      {
+                        "publisher_id": "uuid",
+                        "publisher_name": "FinanceWeekly",
+                        "amount_cents": 800000,
+                        "annual_amount_cents": 800000,
+                        "monthly_amount_cents": 66667
+                      }
+                    ]
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid parameters"
+          },
+          "404": {
+            "description": "One or more publishers not found"
+          },
+          "422": {
+            "description": "No publishers opted into the requested license tier"
+          },
+          "502": {
+            "description": "Stripe API error"
           }
         }
       },
@@ -1618,8 +1738,8 @@
     },
     "/enterprise-auth": {
       "post": {
-        "summary": "Exchange access key for buyer token",
-        "description": "Exchanges an enterprise access_key (from activation email) for a short-lived eat_xxx token used with /content-delivery. Token valid for 30 days.",
+        "summary": "Authenticate or create sandbox token",
+        "description": "Two modes:\n\n**Sandbox (free evaluation):** Send `action: \"create_sandbox\"` with `buyer_email` and optional `buyer_org`. Returns an `eat_sandbox_` token for browsing the catalog and previewing truncated content. No payment required. Rate limit: 3/day per email.\n\n**Production auth:** Send `access_key` (eak_) and `buyer_email` to exchange for a bearer token (`eat_`). Token valid for 30 days, renewable. Rate limit: 5/hr per access_key.",
         "tags": [
           "Enterprise"
         ],
@@ -1628,26 +1748,95 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "access_key": {
-                    "type": "string",
-                    "description": "Enterprise access key (ent_xxx)"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "title": "Sandbox request",
+                    "required": ["action", "buyer_email"],
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "enum": ["create_sandbox"],
+                        "description": "Must be `create_sandbox`"
+                      },
+                      "buyer_email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "eng@yourlab.com"
+                      },
+                      "buyer_org": {
+                        "type": "string",
+                        "example": "Your AI Lab"
+                      }
+                    }
                   },
-                  "buyer_email": {
-                    "type": "string"
+                  {
+                    "type": "object",
+                    "title": "Production auth request",
+                    "required": ["access_key", "buyer_email"],
+                    "properties": {
+                      "access_key": {
+                        "type": "string",
+                        "description": "Enterprise access key (eak_xxx)",
+                        "example": "eak_abc123..."
+                      },
+                      "buyer_email": {
+                        "type": "string",
+                        "format": "email"
+                      }
+                    }
                   }
-                }
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Returns eat_xxx token + expiry + publisher list"
+            "description": "Sandbox: returns `eat_sandbox_` token. Production: returns `eat_` bearer token + publisher list.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "sandbox": {
+                    "summary": "Sandbox token response",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "sandbox_token": "eat_sandbox_abc123...",
+                        "mode": "sandbox",
+                        "expires_at": "2026-04-26T00:00:00Z",
+                        "capabilities": {
+                          "publisher_directory": "Full access",
+                          "content_delivery": "Truncated (500 chars)",
+                          "purchase": "Not available in sandbox"
+                        }
+                      }
+                    }
+                  },
+                  "production": {
+                    "summary": "Production token response",
+                    "value": {
+                      "success": true,
+                      "data": {
+                        "token": "eat_abc123...",
+                        "expires_at": "2026-04-26T00:00:00Z",
+                        "publisher_ids": ["uuid-1", "uuid-2"],
+                        "valid_until": "2027-03-26T00:00:00Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "401": {
-            "description": "Invalid access key or email mismatch"
+            "description": "Invalid access key"
+          },
+          "403": {
+            "description": "License inactive, expired, or email mismatch"
+          },
+          "429": {
+            "description": "Rate limit exceeded (5/hr auth, 3/day sandbox)"
           }
         }
       }
@@ -1683,9 +1872,9 @@
     "/publisher-directory": {
       "get": {
         "summary": "Browse publisher catalog (public)",
-        "description": "Returns verified publishers with article counts and pricing. Supports filtering by category and minimum article count.",
+        "description": "Returns publishers with article counts, pricing, and sample articles. This is the primary endpoint for AI labs to discover available content.\n\nPricing includes `ai_annual` (yearly catalog price set by publisher) and `forward_feed_monthly` (auto-derived as `ai_annual / 12`).\n\nNo authentication required.",
         "tags": [
-          "Content"
+          "Enterprise"
         ],
         "parameters": [
           {
@@ -1693,7 +1882,9 @@
             "in": "query",
             "schema": {
               "type": "string"
-            }
+            },
+            "description": "Filter by category (case-insensitive substring match)",
+            "example": "finance"
           },
           {
             "name": "min_articles",
@@ -1701,15 +1892,18 @@
             "schema": {
               "type": "integer",
               "default": 0
-            }
+            },
+            "description": "Minimum licensable article count"
           },
           {
             "name": "verified",
             "in": "query",
             "schema": {
-              "type": "boolean",
-              "default": true
-            }
+              "type": "string",
+              "default": "false",
+              "enum": ["true", "false"]
+            },
+            "description": "Filter to verified publishers only (default: false = show all)"
           },
           {
             "name": "limit",
@@ -1731,7 +1925,37 @@
         ],
         "responses": {
           "200": {
-            "description": "Paginated publisher list with sample articles"
+            "description": "Paginated publisher list with pricing and sample articles",
+            "content": {
+              "application/json": {
+                "example": {
+                  "success": true,
+                  "data": {
+                    "publishers": [
+                      {
+                        "id": "uuid",
+                        "name": "FinanceWeekly",
+                        "website_url": "https://financeweekly.com",
+                        "category": "Finance",
+                        "article_count": 450,
+                        "pricing": {
+                          "human_per_article": 5,
+                          "ai_per_article": 25,
+                          "ai_annual": 12000,
+                          "forward_feed_monthly": 1000
+                        },
+                        "sample_articles": [
+                          {"title": "Market Analysis Q1", "url": "https://...", "published_at": "2026-03-15"}
+                        ]
+                      }
+                    ],
+                    "total": 1,
+                    "limit": 50,
+                    "offset": 0
+                  }
+                }
+              }
+            }
           }
         }
       }
